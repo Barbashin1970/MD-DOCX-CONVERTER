@@ -67,10 +67,61 @@ def test_grid_sums_to_content_width(docx: bytes) -> None:
     assert sum(widths) == 10205
 
 
+def _borders(xml: str, container: str) -> list[dict[str, str]]:
+    """Границы разбираются как XML: pandoc переупорядочивает атрибуты
+    по алфавиту, и сравнение по строке даёт ложный результат."""
+    import re
+    import xml.etree.ElementTree as ET
+    from md2gostdocx.ooxml import qn
+
+    found = re.search(rf"<{container}\b.*?</{container}>", xml, re.DOTALL)
+    if not found:
+        return []
+    wrapped = (
+        '<root xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        f"{found.group(0)}</root>"
+    )
+    root = ET.fromstring(wrapped)
+    holder = root.find(qn(container))
+    if holder is None:
+        return []
+    return [{k.split("}")[1]: v for k, v in edge.attrib.items()} for edge in holder]
+
+
 def test_borders_are_half_point_black(docx: bytes) -> None:
     xml = _part(docx, "word/document.xml")
-    # w:sz у границ — восьмые доли пункта: 0,5 pt = 4
-    assert xml.count('w:val="single" w:sz="4" w:space="0" w:color="000000"') >= 6
+    edges = _borders(xml, "w:tblBorders")
+    assert len(edges) >= 6
+    for edge in edges[:6]:
+        # w:sz у границ — восьмые доли пункта: 0,5 pt = 4
+        assert edge["sz"] == "4"
+        assert edge["val"] == "single"
+        assert edge["color"] == "000000"
+
+
+def test_reference_template_carries_the_profile() -> None:
+    """Оформление должно жить в шаблоне, а постобработка — быть страховкой.
+    Если этот тест падает, значит шаблон рассобрался: перезапустите
+    tools/build_reference.py."""
+    profile = load_profile("gost19")
+    styles = _part(profile.reference_docx, "word/styles.xml")
+    document = _part(profile.reference_docx, "word/document.xml")
+
+    assert 'w:w="11906"' in document and 'w:h="16838"' in document
+    assert 'w:hAnsi="Times New Roman"' in styles
+    assert 'w:val="ru-RU"' in styles
+    for style_id in ("Requirement", "Note", "Warning",
+                     "RequirementsTable", "TermsTable"):
+        assert f'w:styleId="{style_id}"' in styles, style_id
+    edges = _borders(styles, "w:tblBorders")
+    assert len(edges) >= 6 and all(e["sz"] == "4" for e in edges)
+
+
+def test_template_styles_reach_the_output(docx: bytes) -> None:
+    styles = _part(docx, "word/styles.xml")
+    for style_id in ("Requirement", "Note", "Warning"):
+        assert f'w:styleId="{style_id}"' in styles
+    assert _borders(styles, "w:tblBorders")
 
 
 def test_header_row_is_bold_centered_and_unbreakable(docx: bytes) -> None:
