@@ -16,6 +16,7 @@ _INLINE_CODE_RE = re.compile(r"(`+)(.+?)\1")
 _HEADING_RE = re.compile(r"^(#{1,6})\s+\S")
 _FENCE_RE = re.compile(r"^\s*(```+|~~~+)\s*([A-Za-z0-9_+-]*)")
 _TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$")
+_DIV_OPEN_RE = re.compile(r"""^\s*<div\s+class\s*=\s*["']([\w-]+)["']\s*>\s*$""")
 
 
 def _split_front_matter(text: str) -> tuple[dict[str, str], int]:
@@ -102,6 +103,18 @@ def validate(
                     f"Нарушена иерархия: после H{prev_level} идёт H{level}", n))
             prev_level = level
             continue
+
+        # Пустая строка после <div class="…"> обязательна: без неё pandoc
+        # складывает тег и содержимое в один сырой блок и выбрасывает его —
+        # текст исчезает из DOCX бесследно. Перед </div> пустая строка не
+        # нужна, это проверено: там всё работает.
+        if _DIV_OPEN_RE.match(line):
+            following = lines[n] if n < len(lines) else ""
+            if following.strip():
+                out.append(Diagnostic(
+                    "HTML001", Level.ERROR,
+                    "После открывающего <div class=…> нужна пустая строка, "
+                    "иначе содержимое блока не попадёт в DOCX", n))
 
         for target in _IMAGE_RE.findall(_strip_inline_code(line)):
             if target.startswith(("http://", "https://", "data:")):

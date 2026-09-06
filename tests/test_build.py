@@ -268,6 +268,27 @@ class TestFilters:
         assert "<w:t" not in text
 
 
+class TestBrokenMarkupDoesNotLoseText:
+    """Незакрытый div раньше уносил с собой весь остаток документа."""
+
+    def _text(self, markdown: str) -> str:
+        import re
+        result = build(BuildRequest(markdown, load_profile("gost19")))
+        assert result.docx
+        xml = _part(result.docx, "word/document.xml")
+        return "".join(re.findall(r"<w:t[^>]*>([^<]*)</w:t>", xml))
+
+    def test_unclosed_div_keeps_the_rest_of_the_document(self) -> None:
+        text = self._text('# Т\n\n<div class="requirement">\n\nБлок.\n\n\nХВОСТ\n')
+        assert "ХВОСТ" in text and "Блок." in text
+
+    def test_single_quotes_still_apply_the_style(self) -> None:
+        result = build(BuildRequest(
+            "# Т\n\n<div class='requirement'>\n\nБлок.\n\n</div>\n",
+            load_profile("gost19")))
+        assert '<w:pStyle w:val="Requirement" />' in _part(result.docx, "word/document.xml")
+
+
 class TestValidator:
     def test_missing_title(self) -> None:
         codes = {d.code for d in validate("# Заголовок\n")}
@@ -290,6 +311,15 @@ class TestValidator:
     def test_image_example_in_backticks_is_not_a_reference(self) -> None:
         text = "# Т\n\nПишите картинки так: `![Подпись](images/x.png)`.\n"
         assert not [d for d in validate(text) if d.code == "IMG001"]
+
+    def test_div_without_blank_line_is_an_error(self) -> None:
+        bad = '# Т\n\n<div class="requirement">\nТекст.\n\n</div>\n'
+        found = [d for d in validate(bad) if d.code == "HTML001"]
+        assert found and found[0].level is Level.ERROR
+
+    def test_div_with_blank_line_is_fine(self) -> None:
+        good = '# Т\n\n<div class="requirement">\n\nТекст.\n</div>\n'
+        assert not [d for d in validate(good) if d.code == "HTML001"]
 
     def test_ragged_table(self) -> None:
         text = "# Т\n\n| a | b |\n|---|---|\n| 1 | 2 | 3 |\n"
