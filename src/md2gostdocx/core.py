@@ -88,6 +88,7 @@ def load_profile(profile_id: str = "gost19", reference: Path | None = None) -> P
         toc=pandoc.get("toc", True),
         toc_depth=pandoc.get("toc_depth", 3),
         toc_title=pandoc.get("toc_title", "Содержание"),
+        template=str(directory / pandoc["template"]) if pandoc.get("template") else None,
         lua_filters=tuple(str(directory / f) for f in pandoc.get("filters", [])),
     )
 
@@ -141,6 +142,10 @@ def build(req: BuildRequest) -> BuildResult:
         for lua in profile.lua_filters:
             if Path(lua).is_file():
                 cmd.append(f"--lua-filter={lua}")
+        # Титульный лист: неизвестные YAML-поля pandoc сам в текст не выводит,
+        # их подставляет только шаблон.
+        if profile.template and Path(profile.template).is_file():
+            cmd.append(f"--template={profile.template}")
         if profile.toc:
             cmd += [
                 "--toc",

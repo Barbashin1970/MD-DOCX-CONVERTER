@@ -6,7 +6,12 @@
   "lang": "ru-RU",
   "page": {
     "size": "A4",
-    "margins_mm": { "top": 20, "bottom": 20, "left": 20, "right": 10 }
+    "margins_mm": {
+      "top": 20,
+      "bottom": 20,
+      "left": 20,
+      "right": 10
+    }
   },
   "tables": {
     "width_percent": 100,
@@ -29,6 +34,12 @@
     "toc": true,
     "toc_depth": 3,
     "toc_title": "Содержание",
-    "filters": ["filters/gost_tables.lua"]
+    "filters": [
+      "filters/gost_captions.lua",
+      "filters/gost_alerts.lua",
+      "filters/gost_htmldiv.lua",
+      "filters/gost_tables.lua"
+    ],
+    "template": "title.docx.xml"
   }
 }

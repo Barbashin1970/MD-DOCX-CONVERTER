@@ -33,8 +33,12 @@ from md2gostdocx.postprocess import A4_H, A4_W  # noqa: E402
 # стилей таблиц вообще не создаёт заглушку — они обязаны быть здесь заранее.
 BLOCK_STYLES = (
     ("Requirement", "Requirement", {"bold": False, "italic": False, "bar": "404040"}),
+    ("Term", "Term", {"bold": False, "italic": False, "bar": "808080"}),
     ("Note", "Note", {"bold": False, "italic": True, "bar": "808080"}),
+    ("Tip", "Tip", {"bold": False, "italic": True, "bar": "607080"}),
+    ("Important", "Important", {"bold": True, "italic": False, "bar": "404040"}),
     ("Warning", "Warning", {"bold": True, "italic": False, "bar": "000000"}),
+    ("Caution", "Caution", {"bold": True, "italic": False, "bar": "000000"}),
 )
 TABLE_STYLES = (("RequirementsTable", "Requirements Table"),
                 ("TermsTable", "Terms Table"))

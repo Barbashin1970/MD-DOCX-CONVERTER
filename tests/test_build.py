@@ -183,6 +183,91 @@ def test_mermaid_without_renderer_does_not_break_build() -> None:
     assert "MMD002" in codes or "MMD004" in codes
 
 
+SEMANTIC_MD = """---
+title: "Пробное задание"
+document_code: "ТЗ-ТЕСТ-001"
+version: "2.0"
+customer: "Заказчик"
+developer: "Исполнитель"
+---
+
+# 1 Общие сведения
+
+> [!NOTE]
+> Примечание из алерта GitHub.
+
+> [!WARNING]
+> Предупреждение из алерта GitHub.
+
+<div class="requirement">
+
+Система должна хранить журнал не менее 12 месяцев.
+
+</div>
+
+**Таблица — Требования**
+
+| № | Требование |
+|---:|---|
+| 1 | Авторизация |
+
+<div class="terms-table">
+
+| Термин | Определение |
+|---|---|
+| Оператор | Лицо, работающее с системой |
+
+</div>
+"""
+
+
+@pytest.fixture(scope="module")
+def semantic() -> bytes:
+    result = build(BuildRequest(SEMANTIC_MD, load_profile("gost19")))
+    assert result.docx, [d.message for d in result.diagnostics]
+    return result.docx
+
+
+class TestFilters:
+    def test_github_alerts_become_word_styles(self, semantic: bytes) -> None:
+        xml = _part(semantic, "word/document.xml")
+        assert '<w:pStyle w:val="Note" />' in xml
+        assert '<w:pStyle w:val="Warning" />' in xml
+
+    def test_alert_titles_are_russian(self, semantic: bytes) -> None:
+        import re
+        text = "".join(re.findall(r"<w:t[^>]*>([^<]*)</w:t>",
+                                  _part(semantic, "word/document.xml")))
+        assert "Примечание" in text and "Внимание" in text
+        # английские заголовки алертов не должны просочиться
+        assert ">Note<" not in text and ">Warning<" not in text
+
+    def test_html_div_becomes_requirement(self, semantic: bytes) -> None:
+        # На GitHub такой блок выглядит обычным текстом, в Word получает стиль
+        assert '<w:pStyle w:val="Requirement" />' in _part(semantic, "word/document.xml")
+
+    def test_table_caption_is_numbered(self, semantic: bytes) -> None:
+        import re
+        xml = _part(semantic, "word/document.xml")
+        text = "".join(re.findall(r"<w:t[^>]*>([^<]*)</w:t>", xml))
+        assert '<w:pStyle w:val="TableCaption" />' in xml
+        assert "Таблица 1" in text
+
+    def test_table_style_comes_from_the_wrapping_div(self, semantic: bytes) -> None:
+        # Единственный рабочий способ: обёртка ::: из §5.7 ТЗ не работает
+        assert '<w:tblStyle w:val="TermsTable" />' in _part(semantic, "word/document.xml")
+
+    def test_title_page_carries_metadata(self, semantic: bytes) -> None:
+        import re
+        xml = _part(semantic, "word/document.xml")
+        text = "".join(re.findall(r"<w:t[^>]*>([^<]*)</w:t>", xml))
+        assert "ТЗ-ТЕСТ-001" in text          # pandoc сам эти поля не выводит
+        assert "Заказчик" in text and "2.0" in text
+        assert 'w:type="page"' in xml         # разрыв после титульного листа
+        # Обёртка $var$ в <w:r><w:t> дала бы вложенный <w:t> и битый документ
+        assert "<w:t" not in text
+
+
 class TestValidator:
     def test_missing_title(self) -> None:
         codes = {d.code for d in validate("# Заголовок\n")}

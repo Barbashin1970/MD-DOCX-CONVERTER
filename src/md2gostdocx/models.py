@@ -82,6 +82,7 @@ class Profile:
     toc_depth: int = 3
     toc_title: str = "Содержание"
     lua_filters: tuple[str, ...] = ()
+    template: str | None = None
 
 
 @dataclass(frozen=True)
