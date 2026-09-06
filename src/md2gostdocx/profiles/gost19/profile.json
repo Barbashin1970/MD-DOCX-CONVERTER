@@ -1,0 +1,34 @@
+{
+  "name": "ГОСТ 19 — НГУ",
+  "pandoc_version": "3.11",
+  "font": "Times New Roman",
+  "font_size_pt": 12,
+  "lang": "ru-RU",
+  "page": {
+    "size": "A4",
+    "margins_mm": { "top": 20, "bottom": 20, "left": 20, "right": 10 }
+  },
+  "tables": {
+    "width_percent": 100,
+    "border_pt": 0.5,
+    "border_color": "000000",
+    "header_bold": true,
+    "header_center": true,
+    "valign": "center",
+    "allow_autofit": false
+  },
+  "enforce": {
+    "font": true,
+    "page": true,
+    "table_width": true,
+    "table_borders": true,
+    "table_header": true
+  },
+  "pandoc": {
+    "from": "gfm",
+    "toc": true,
+    "toc_depth": 3,
+    "toc_title": "Содержание",
+    "filters": ["filters/gost_tables.lua"]
+  }
+}

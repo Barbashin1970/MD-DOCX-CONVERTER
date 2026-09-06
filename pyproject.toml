@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "md2gostdocx"
+version = "0.1.0"
+description = "Markdown -> DOCX по профилям оформления ГОСТ 19"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+web = ["fastapi>=0.115", "uvicorn>=0.32"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+md2gostdocx = "md2gostdocx.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/md2gostdocx"]
+
+# reference.docx и собранный интерфейс — генерируемые/бинарные файлы.
+# Без этой строки они молча не попадут в колесо, если окажутся в .gitignore,
+# и инструмент соберёт DOCX без ГОСТ-стилей.
+[tool.hatch.build]
+artifacts = [
+    "src/md2gostdocx/profiles/**/reference.docx",
+    "src/md2gostdocx/web/static/**",
+]
